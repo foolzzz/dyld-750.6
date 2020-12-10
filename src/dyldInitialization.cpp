@@ -120,6 +120,9 @@ uintptr_t start(const dyld3::MachOLoaded* appsMachHeader, int argc, const char* 
     // Emit kdebug tracepoint to indicate dyld bootstrap has started <rdar://46878536>
     dyld3::kdebug_trace_dyld_marker(DBG_DYLD_TIMING_BOOTSTRAP_START, 0, 0, 0, 0);
 
+    /*
+     重定位
+     */
 	// if kernel had to slide dyld, we need to fix up load sensitive locations
 	// we have to do this before using any global variables
     rebaseDyld(dyldsMachHeader);

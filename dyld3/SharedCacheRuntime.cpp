@@ -687,6 +687,9 @@ bool loadDyldCache(const SharedCacheOptions& options, SharedCacheLoadInfo* resul
     
 #else
     
+    /*
+     仅加载当前进程/复用已经加载的缓存
+     */
     if ( options.forcePrivate ) {
         // mmap cache into this process only
         return mapCachePrivate(options, results);

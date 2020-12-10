@@ -2313,6 +2313,7 @@ static void checkEnvironmentVariables(const char* envp[])
 {
 	if ( !gLinkContext.allowEnvVarsPath && !gLinkContext.allowEnvVarsPrint )
 		return;
+	
 	const char** p;
 	for(p = envp; *p != NULL; p++) {
 		const char* keyEqualsValue = *p;
@@ -2991,7 +2992,7 @@ static ImageLoaderMachO* instantiateFromLoadedImage(const macho_header* mh, uint
 {
 	// try mach-o loader
 	if ( isCompatibleMachO((const uint8_t*)mh, path) ) {
-		ImageLoader* image = ImageLoaderMachO::instantiateMainExecutable(mh, slide, path, gLinkContext);
+		ImageLoader* image = ImageLoaderMachO::instantiateMainExecutable(mh, slide, path, gLinkContext);	// 实例化主程序
 		addImage(image);
 		return (ImageLoaderMachO*)image;
 	}
@@ -6224,6 +6225,9 @@ _main(const macho_header* mainExecutableMH, uintptr_t mainExecutableSlide,
 	sMainExecutableSlide = mainExecutableSlide;
 
 
+	/*
+	 设置当前的系统平台
+	 */
 	// Set the platform ID in the all image infos so debuggers can tell the process type
 	// FIXME: This can all be removed once we make the kernel handle it in rdar://43369446
 	if (gProcessInfo->version >= 16) {
@@ -6283,8 +6287,12 @@ _main(const macho_header* mainExecutableMH, uintptr_t mainExecutableSlide,
 	}
 #endif
 
+	
 	CRSetCrashLogMessage("dyld: launch started");
 
+	/*
+	 设置ImageLoader::LinkContext			gLinkContext; 全局链接器
+	 */
 	setContext(mainExecutableMH, argc, argv, envp, apple);
 
 	// Pickup the pointer to the exec path.
@@ -6317,6 +6325,7 @@ _main(const macho_header* mainExecutableMH, uintptr_t mainExecutableSlide,
 		}
 	}
 
+	// 记录短名字
 	// Remember short name of process for later logging
 	sExecShortName = ::strrchr(sExecPath, '/');
 	if ( sExecShortName != NULL )
@@ -6324,6 +6333,7 @@ _main(const macho_header* mainExecutableMH, uintptr_t mainExecutableSlide,
 	else
 		sExecShortName = sExecPath;
 
+	// 检查进程是否受限
     configureProcessRestrictions(mainExecutableMH, envp);
 
 	// Check if we should force dyld3.  Note we have to do this outside of the regular env parsing due to AMFI
@@ -6362,6 +6372,9 @@ _main(const macho_header* mainExecutableMH, uintptr_t mainExecutableSlide,
 	else
 #endif
 	{
+		/*
+		 配置环境变量，获取当前运行架构
+		 */
 		checkEnvironmentVariables(envp);
 		defaultUninitializedFallbackPaths(envp);
 	}
@@ -6379,6 +6392,9 @@ _main(const macho_header* mainExecutableMH, uintptr_t mainExecutableSlide,
 		gLinkContext.sharedRegionMode = ImageLoader::kDontUseSharedRegion;
 	}
 #endif
+	/*
+	 打印opts, env等等
+	 */
 	if ( sEnv.DYLD_PRINT_OPTS )
 		printOptions(argv);
 	if ( sEnv.DYLD_PRINT_ENV ) 
@@ -6416,7 +6432,7 @@ _main(const macho_header* mainExecutableMH, uintptr_t mainExecutableSlide,
 	/*
 	 加载共享缓存库
 	 */
-	
+	// 2.
 
 	// load shared cache
 	checkSharedRegionDisable((dyld3::MachOLoaded*)mainExecutableMH, mainExecutableSlide);
@@ -6549,7 +6565,11 @@ _main(const macho_header* mainExecutableMH, uintptr_t mainExecutableSlide,
 #endif
 
 
+	// 3.
 	try {
+		/*
+		 将dyld自身加入UUID列表内
+		 */
 		// add dyld itself to UUID list
 		addDyldImageToUUIDList();
 
@@ -6566,6 +6586,7 @@ _main(const macho_header* mainExecutableMH, uintptr_t mainExecutableSlide,
 				sAllCacheImagesProxy = ImageLoaderMegaDylib::makeImageLoaderMegaDylib(&sSharedCacheLoadInfo.loadAddress->header, sSharedCacheLoadInfo.slide, mainExecutableMH, gLinkContext);
 		}
 
+		// 4.
 reloadAllImages:
 #endif
 		/*
@@ -6660,7 +6681,7 @@ reloadAllImages:
 		 加载 DYLD_INSERT_LIBRARIES
 		 */
 		
-
+// 5.
 		// load any inserted libraries
 		if	( sEnv.DYLD_INSERT_LIBRARIES != NULL ) {
 			for (const char* const* lib = sEnv.DYLD_INSERT_LIBRARIES; *lib != NULL; ++lib) 
@@ -6671,6 +6692,8 @@ reloadAllImages:
 		sInsertedDylibCount = sAllImages.size()-1;
 
 		
+		
+		// 6.
 		/*
 		 链接主程序
 		 */
@@ -6689,6 +6712,8 @@ reloadAllImages:
 			gLinkContext.bindFlat = true;
 			gLinkContext.prebindUsage = ImageLoader::kUseNoPrebinding;
 		}
+		
+		// 6. 链接主程序和插入的库
 
 		// link any inserted libraries
 		// do this after linking main executable so that any dylibs pulled in by inserted 

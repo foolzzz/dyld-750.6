@@ -300,7 +300,7 @@ public:
 		const dyld_interpose_tuple*	dynamicInterposeArray;
 		size_t			dynamicInterposeCount;
 		PrebindMode		prebindUsage;
-		SharedRegionMode sharedRegionMode;
+		SharedRegionMode sharedRegionMode;	// 是否开启共享缓存
 		mutable dyld3::Map<const char*, std::pair<const ImageLoader*, uintptr_t>, HashCString, EqualCString> weakDefMap;
 		mutable bool	weakDefMapInitialized = false;
 		mutable bool	weakDefMapProcessedLaunchDefs = false;
